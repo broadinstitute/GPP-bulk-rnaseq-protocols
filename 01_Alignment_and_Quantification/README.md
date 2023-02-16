@@ -14,14 +14,15 @@ See [`Protocol`](#Protocol) section for instructions.
 ### Install Google Cloud CLI with Homebrew on MacOS
 * Install x-code if you don't already have it 
 	* `xcode-select --install`
-* Install [Homebrew] (https://brew.sh/) as the MacOS package manner if you don't already have it
+* Install [Homebrew](https://brew.sh/) as the MacOS package manner if you don't already have it
 * Install the CLI
 	* `brew install --cask google-cloud-sdk`
 * Log into your Google Cloud account
 	* `gcloud auth login`
 
 ### Create a Terra sample file
-1. Make a *tab delimited* sample file with the headers : `entity:sample_id`, `fastq1`, `fastq2`.   
+1. Make a *tab delimited* sample file with the headers : `entity:sample_id`, `fastq1`, `fastq2`. 
+See [example](https://github.com/broadinstitute/gpp-rnaseq-analysis/blob/main/rnaseq_samples.tsv).
 2. Fill the `fastq1` column with the R1 files and `fastq2` with R2 (While you can do this manually by clicking through every file, we recommend using the Google Cloud CLI to list the files). 
 	* Find the Google bucket path to where your data files are located (e.g. `gs://gpp_rnd_rnaseq/TP53`).   
 	* Get R1 reads `gcloud storage ls gs://path/to/folder | egrep '\.gz$' | grep R1`
