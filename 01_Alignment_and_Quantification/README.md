@@ -45,3 +45,11 @@ See [example](https://github.com/broadinstitute/gpp-rnaseq-analysis/blob/main/rn
 3. Click on **"Select Data"** in Step 2 and select your samples. *Leave all the default settings as-is*.
 	![Screenshot 2023-02-08 at 5 36 19 PM](https://user-images.githubusercontent.com/7750862/217667886-3e382e85-f4ab-493f-a5ee-94e457cff8d6.png)
 4. Click **"Run Analysis"**
+
+### Download Result
+1. Click on the **Job History** tab of the broad-gpp/RNASeq_analysis workspace.  
+2. Click on the **Submission** column of your run (highlighted in green).    
+3. For each file, click on the **Execution directory** icon in the Links column.    
+![Screenshot 2023-02-21 at 12 36 22 PM](https://user-images.githubusercontent.com/7750862/220418827-82dd00d9-a532-4329-8c90-b7be50a3d266.png)
+4. Download the `.rsem.genes/results.gz `file in `call-resem/`
+	* Sometimes this is nested under `call-rsem/attempt-2/`
