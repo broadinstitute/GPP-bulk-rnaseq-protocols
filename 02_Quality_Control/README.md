@@ -66,7 +66,7 @@ qc.outlier_histo <- ggplot(qc.outlier_sums, aes(x=count)) +
 qc.outlier_histo
 ```
 
-![](QC_files/figure-gfm/outlier-histo-1.png)<!-- -->
+![](README_files/figure-gfm/outlier-histo-1.png)<!-- -->
 
 Tip: You can save the plots by using the `ggsave()` function
 
@@ -91,7 +91,7 @@ numGenes.vplot <- ggplot(df.mapped_rates.long, aes(x=variable, y=value)) + geom_
 numGenes.vplot
 ```
 
-![](QC_files/figure-gfm/numGenes-violin-plot-1.png)<!-- -->
+![](README_files/figure-gfm/numGenes-violin-plot-1.png)<!-- -->
 
 ``` r
 # Stacked bar graph of rate metrics
@@ -105,7 +105,7 @@ alignmentRate.stacked <- ggplot(df.mapped_rates.long,aes(fill=variable, x=value,
 alignmentRate.stacked
 ```
 
-![](QC_files/figure-gfm/alignment-bar-graph-1.png)<!-- -->
+![](README_files/figure-gfm/alignment-bar-graph-1.png)<!-- -->
 
 In this example, we chose not to remove any samples in this step because
 the range of all the metrices were so tight. One sample appeared to be
@@ -181,7 +181,7 @@ sample.groups <- as.character(sample.groups)
 plotMDS(reads.dge.lcpm, col=sample.groups, cex=0.7, xlim=c(-1.5, 1.5))
 ```
 
-![](QC_files/figure-gfm/mds-1.png)<!-- -->
+![](README_files/figure-gfm/mds-1.png)<!-- -->
 
 In our data, all the replicates cluster well except for 569-Nutlin-RepA,
 which seems closer in expression to the untreated group.
@@ -197,7 +197,7 @@ cor_all <- cor(reads.dge.lcpm)
 heatmap(cor_all)
 ```
 
-![](QC_files/figure-gfm/pearson-1.png)<!-- -->
+![](README_files/figure-gfm/pearson-1.png)<!-- -->
 
 #### 6. Gene(s) of Interest
 
@@ -235,7 +235,7 @@ ggplot(reads.tp53.long, aes(x=group, y=value, palette = "BuGn",fill=condition)) 
                                         c("treated_ex9", "untreated_ex9")))
 ```
 
-![](QC_files/figure-gfm/tp53-boxplot-1.png)<!-- -->
+![](README_files/figure-gfm/tp53-boxplot-1.png)<!-- -->
 
 Tip: use `ggarrange(... common.legend = TRUE, legend="bottom")` if you
 have more than one graph and would like to combine the legends.
