@@ -21,6 +21,8 @@ library(ggpubr) # for stat compare function
 
 #### 2. Import QC files
 
+QC files are the `.metrics.tsv` files downloaded from Terra
+
 ``` r
 qc_file_dir <- "/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP RNA Seq/2023/TP53/Terra/RNASeQC_Results/"
 qc_files <- list.files(path=qc_file_dir, full.names=TRUE)

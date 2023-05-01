@@ -14,7 +14,6 @@ See [`Protocol`](#Protocol) section for instructions.
 ### Install Google Cloud CLI with Homebrew on MacOS
 * Install x-code if you don't already have it 
 	* `xcode-select --install`
-* Install [Homebrew](https://brew.sh/) as the MacOS package manner if you don't already have it
 * Install the CLI
 	* `brew install --cask google-cloud-sdk`
 * Log into your Google Cloud account
@@ -51,5 +50,6 @@ See [example](https://github.com/broadinstitute/gpp-rnaseq-analysis/blob/main/rn
 2. Click on the **Submission** column of your run (highlighted in green).    
 3. For each file, click on the **Execution directory** icon in the Links column.    
 ![Screenshot 2023-02-21 at 12 36 22 PM](https://user-images.githubusercontent.com/7750862/220418827-82dd00d9-a532-4329-8c90-b7be50a3d266.png)
-4. Download the `.rsem.genes/results.gz `file in `call-resem/`
-	* Sometimes this is nested under `call-rsem/attempt-2/`
+4. Download QC and read files    
+	4a. Read file names end with `.rsem.genes.results.gz ` in the `call-resem/` directory (sometimes this is nested under `call-rsem/attempt-2/`)        
+	4b. QC file names end with `.metrics.tsv` in the `call-rnaseqc2` directory    
