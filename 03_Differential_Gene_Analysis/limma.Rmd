@@ -1,0 +1,186 @@
+---
+title: "Limma Protocol"
+author: "Dany Gould"
+date: "2023-04-24"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Limma Guides
+* Limma's [User Guide](https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf)
+* Limma [Workflow](https://www.bioconductor.org/packages/devel/workflows/vignettes/RNAseq123/inst/doc/limmaWorkflow.html)
+
+#### 1. Import packages
+
+```{r, import packages, results = FALSE, message=FALSE, warning = FALSE}
+library(edgeR)
+library(limma)
+library(data.table)
+library(ggplot2)
+library(ggpmisc)
+library(ggpubr)
+library(biomaRt) # for importing ensembl data
+```
+
+#### 2. Import Read files
+Read files are the `.rsem.genes.results` or `.rsem.genes.results.gz` files downloaded from Terra
+```{r, import-files, message=FALSE}
+reads_file_dir <- "/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP RNA Seq/2023/TP53/Terra/RSEM_Results/All-reads/"
+read_files <- list.files(path=reads_file_dir, full.names=TRUE)
+# Create a dataframe of reads from each file
+reads_list <- lapply(read_files, function(x) {
+  r <- fread(x, select = c("gene_id", "expected_count"))
+  file_name <- unlist(strsplit(x, "\\."))[2]
+  # Change the expected_count column to the sample name
+  setnames(r, c("gene_id", sub(".*TP53-A549-", "", file_name)))
+})
+
+# Merge all the reads into one dataframe
+reads_df <- Reduce(function(x, y) merge(x, y, by = "gene_id", all=TRUE), reads_list)
+reads_df<- as.data.frame(reads_df)
+# Gene IDs are in the first column, make them rownames and then drop the column
+rownames(reads_df) <- reads_df[,1]
+reads_df[,1] <- NULL
+```
+
+#### 3. Pre-process the reads
+```{r, preprocess, message=FALSE}
+# Make sure the samples in the annotation file are in the same order as the columns names of the dataframe!
+annot <- read.csv("/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Dany/RNAseq Analysis/TP53 Base Editing/TP53-BE-tiling-annotation.csv")
+reads.dge <- DGEList(counts=reads_df, samples = annot)
+
+# Remove lowly expressed genes
+reads.dge$samples$group <- as.factor(c(annot$Sample))
+# You could also do this manually, like removing any row with less than 10 reads
+keep.exprs.reads <- filterByExpr(reads.dge, group = reads.dge$samples$group)
+reads.dge <- reads.dge[keep.exprs.reads,, keep.lib.sizes=FALSE]
+
+# Normalize by TMM
+reads.dge <- calcNormFactors(reads.dge, method = "TMM")
+reads.dge.lcpm <- cpm(reads.dge, log=TRUE) #log2 
+```
+
+#### 4. Differentially Expressed Genes (DEG) Analysis
+##### 4.1 Create Design Matrix 
+Refer to this [guide](https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html) to understand how to create an appropriate matrix for your experiment.
+Note: In an orthogonal data set such as this, the means model and means-reference model will give the same results at the end. The following is an example of the Means Model, refer to `means-reference-model.R` to see how this dataset was analyzed *with* an intercept. 
+```{r, design-matrix, message=FALSE}
+group <- reads.dge$samples$group
+# ~0 = Means Model = NO intercept
+design.no_intercept <- model.matrix(~0+group)
+colnames(design.no_intercept) <- gsub("group", "", colnames(design.no_intercept))
+```
+##### 4.2 Make Contrasts
+```{r, contrast, message=FALSE}
+contrast.no_intercept <- makeContrasts(
+  "Ex1 vs Control Untreated" = untreated_ex1 - untreated_ctrl, 
+  "Ex9 vs Control Untreated" = untreated_ex9 - untreated_ctrl, 
+  "Ex1 vs Control Nutlin" = treated_ex1 - treated_ctrl, 
+  "Ex9 vs Control Nutlin" = treated_ex9 - treated_ctrl, 
+  "Nutlin Control vs Untreated Control" = treated_ctrl - untreated_ctrl,
+  "Nutlin Ex1 vs Untreated Ex1" = treated_ex1 - untreated_ex1,
+  "Nutlin Ex9 vs Untreated Ex9" = treated_ex9 - untreated_ex9,
+  levels = colnames(design.no_intercept))
+contrast.no_intercept
+```
+##### 4.3 Create Design Matrix for Sample Weight
+Since we saw in the QC step that 569-Nutlin-RepA is a possible outlier, we will account for this in Limma by using the `voomWithQualityWeights` function instead of `voom`. Note: if your Mean-Variance graph does not look like the one below, you likely did not filter the genes sufficiently. 
+```{r, sample-weight, message=FALSE}
+design.outlier <- model.matrix(~0+annot$Outlier)
+v.qw <- voomWithQualityWeights(reads.dge, design.no_intercept, var.design=design.outlier, plot=TRUE)
+```
+
+##### 4.4 Linear Modeling
+Refer to the Limma user guide and workflow documentation linked above to understand how Limma works and which parameters to use for your analysis.
+```{r, linear-modeling, message=FALSE}
+fit.qw <- lmFit(v.qw, design.no_intercept)
+fit.qw <- contrasts.fit(fit.qw, contrasts=contrast.no_intercept)
+fit.qw <- eBayes(fit.qw)
+fit.qw.summary <- summary(decideTests(fit.qw))
+fit.qw.summary
+```
+##### 4.5 Summary of DEGs
+```{r, deg-summary, message=FALSE}
+# Fetch gene names from Ensembl
+mart <- useDataset("hsapiens_gene_ensembl", useMart("ensembl"))
+
+# Function to make a summary table including gene names
+makeTopTableWithGeneNames = function(fit, colName){
+  toptable <- topTable(fit,coef=colName, number=Inf,adjust.method="BH")
+  toptable$geneID <- rownames(toptable)
+  # Remove the version number
+  toptable$geneID <- lapply(toptable$geneID, function(x) unlist(strsplit(x, "\\."))[1])
+  toptable$geneID<-as.character(toptable$geneID)
+  genelist <- getBM(filters=c("ensembl_gene_id"), attributes= c("ensembl_gene_id","hgnc_symbol"), values=toptable$geneID, mart=mart)
+  return(merge(toptable, genelist, by.x="geneID", by.y="ensembl_gene_id"))
+}
+
+# Make a named vector of summary tables with names from summary()
+toptables.qw <- list()
+for(name in colnames(fit.qw.summary)){
+  toptables.qw[[name]] <- makeTopTableWithGeneNames(fit.qw, colName=name)
+}
+head(toptables.qw[["Ex1 vs Control Untreated"]])
+```
+
+#### 5. Create Baseline Expression vs LFC Plot
+The `AveExpr` column of the TopTable is the average expression across *all* replicates. We need to manually subset the data to get the average expression of just the reference. 
+```{r, ref-avg-df, message=FALSE}
+refAvg.df <- data.frame(matrix(ncol=4, nrow=nrow(reads.dge.lcpm), 
+                              dimnames=list(rownames(reads.dge.lcpm), 
+                                            c("untreated_ctrl_mean", "treated_ctrl_mean", 
+                                              "untreated_ex1_mean", "untreated_ex9_mean"))))
+rownames(refAvg.df) <- lapply(rownames(refAvg.df), function(x) unlist(strsplit(x, "\\."))[1])
+refAvg.df$untreated_ctrl_mean <- rowMeans(reads.dge.lcpm[, annot$Sample == "untreated_ctrl"])
+refAvg.df$treated_ctrl_mean <- rowMeans(reads.dge.lcpm[, annot$Sample == "treated_ctrl"])
+refAvg.df$untreated_ex1_mean <- rowMeans(reads.dge.lcpm[, annot$Sample == "untreated_ex1"])
+refAvg.df$untreated_ex9_mean <- rowMeans(reads.dge.lcpm[, annot$Sample == "untreated_ex9"])
+head(refAvg.df)
+``` 
+
+Create a helper function to plot the average log2 expression of each gene against the LFC, and specifically highlight TP53 and MDM2 since these are two genes of interest in this experiment. 
+```{r, plot-helper-func, message=FALSE}
+meanDifferencePlot = function(topTable, title) {
+  return(
+    ggplot(topTable, aes(x=RefAvg, y=logFC, color=logFC < 0 )) + 
+      geom_point() + 
+      theme_classic() + 
+      scale_y_continuous(limits = c(-8, 8)) + 
+      labs(title = title, x = "Average Expression", color = "Expression Change") + 
+      scale_color_manual(labels = c("Upregulated", "Downregulated"), values = c("pink", "lightblue")) + 
+      geom_text(aes(label=ifelse(hgnc_symbol=="TP53", hgnc_symbol,'')), color="black") + 
+      geom_text(aes(label=ifelse(hgnc_symbol=="MDM2", hgnc_symbol,'')), color="black") 
+  )
+}
+```
+
+```{r, avg-vs-lfc-plot, message=FALSE}
+# Define the mapping between the names of the TopTables to its reference
+refMap <- c(
+  "Ex1 vs Control Untreated" = "untreated_ctrl_mean",
+  "Ex9 vs Control Untreated" = "untreated_ctrl_mean",
+  "Ex1 vs Control Nutlin" = "treated_ctrl_mean",
+  "Ex9 vs Control Nutlin" = "treated_ctrl_mean",
+  "Nutlin Control vs Untreated Control" = "untreated_ctrl_mean",
+  "Nutlin Ex1 vs Untreated Ex1" = "untreated_ex1_mean",
+  "Nutlin Ex9 vs Untreated Ex9" = "untreated_ex9_mean"
+)
+
+plotList <- list()
+# Loop through the names of the TopTables and use the mapping to add the reference average
+# as a new column to the table
+for(name in names(toptables.qw)){
+  toptables.qw[[name]]$RefAvg <- refAvg.df[refMap[name]][toptables.qw[[name]]$geneID,]
+  plotList[[name]] <- meanDifferencePlot(toptables.qw[[name]], name) 
+}
+
+#pdf(paste(analysis_dir, "Figures/DEG-MeanModel-QualityWeight.pdf", sep=""))
+#ggarrange(plotlist=plotList, ncol=2, nrow=2, common.legend = TRUE, legend="bottom")
+#dev.off()
+
+# Show one plot as example, uncomment the code above to save all 7 plots to a PDF
+plotList[["Ex1 vs Control Untreated"]]
+```
