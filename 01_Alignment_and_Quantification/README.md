@@ -5,6 +5,9 @@ See [`Protocol`](#Protocol) section for instructions.
 
 
 # Method
+We use [STAR](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3530905/pdf/bts635.pdf) to align sequence reads to the reference genome. Here is an [introduction](https://hbctraining.github.io/Intro-to-rnaseq-hpc-O2/lessons/03_alignment.html) on its method. 
+
+For quantification, we use [RNA-Seq by Expectation Maximization(RSEM)](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-12-323). RSEM outputs abundance estimates on the gene or isoform level.
 
 # Protocol
 ## Requirements
