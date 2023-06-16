@@ -1,0 +1,152 @@
+---
+title: "RNASeq Analysis with DESeq2"
+author: "Dany Gould"
+date: "2023-06-16"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### DESeq2
+
+---
+
+#### 1. Import packages
+```{r, import packages, results = FALSE, message=FALSE, warning = FALSE}
+library(DESeq2)
+library(edgeR)
+library(ggpubr)
+library(ggplot2)
+library(data.table)
+library(biomaRt) # for importing ensembl data
+```
+
+#### 2. Import Read files
+Read files are the `.rsem.genes.results` or `.rsem.genes.results.gz` files downloaded from Terra
+```{r, import-files, message=FALSE}
+reads_file_dir <- "/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP RNA Seq/2023/TP53/Terra/RSEM_Results/All-reads/"
+read_files <- list.files(path=reads_file_dir, full.names=TRUE)
+# Create a dataframe of reads from each file
+reads_list <- lapply(read_files, function(x) {
+  r <- fread(x, select = c("gene_id", "expected_count"))
+  file_name <- unlist(strsplit(x, "\\."))[2]
+  # Change the expected_count column to the sample name
+  setnames(r, c("gene_id", sub(".*TP53-A549-", "", file_name)))
+})
+
+# Merge all the reads into one dataframe
+reads_df <- Reduce(function(x, y) merge(x, y, by = "gene_id", all=TRUE), reads_list)
+reads_df<- as.data.frame(reads_df)
+# Gene IDs are in the first column, make them rownames and then drop the column
+rownames(reads_df) <- reads_df[,1]
+reads_df[,1] <- NULL
+```
+
+#### 3. Pre-process the reads
+```{r, preprocess, message=FALSE}
+# Make sure the samples in the annotation file are in the same order as the columns names of the dataframe!
+annot <- read.csv("/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Dany/RNAseq Analysis/TP53 Base Editing/TP53-BE-tiling-annotation.csv")
+
+# Remove 569-Nutlin-RepA from analysis (see 02_Quality_Control for reasoning behind this)
+annot.minus.outlier <- annot[annot$Outlier=="FALSE",]
+reads_df.minus.outlier <- subset(reads_df, select=-c(`RDA569-Nutlin-RepA`))
+
+# Make DGE object
+reads.dge.minus.outlier <- edgeR::DGEList(counts=reads_df.minus.outlier, samples = annot.minus.outlier)
+reads.dge.minus.outlier$samples$group <- as.factor(c(annot.minus.outlier$Sample))
+
+# Remove lowly expressed genes
+# There are many valid ways to do so - for example, remove any row where the sum of the row < 10
+# Here we use the filterByExpr from the edgeR package described by Chen et al (2016)
+keep.exprs.reads <- edgeR::filterByExpr(reads.dge.minus.outlier, group = reads.dge.minus.outlier$samples$group)
+reads.dge.minus.outlier <- reads.dge.minus.outlier[keep.exprs.reads,, keep.lib.sizes=FALSE]
+
+# DESeq2 requires all data to be non-negative integers
+reads.matrix.filtered <- round(as.data.frame(reads.dge.minus.outlier$counts)) 
+```
+Note: do NOT normalize the reads prior to using the DESeq2 library. 
+
+#### 4. Differentially Expressed Genes (DEG) Analysis
+##### 4.1 Create Design Matrix 
+Refer to this [guide](https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html) to understand design matrix terminology and how to create a suitable one for your experiment. The following is an example of the Mean Reference model. Using the Means model in conjunction with `contrasts` is also valid (but would not be compatible with the `apeglm` algorithm in section 4.5).
+```{r, design-matrix, message=FALSE}
+# In this experiment we combine guide and treatment into one factor
+design <- as.factor(reads.dge.minus.outlier$samples$group)
+design
+```
+##### 4.2 Set Reference
+By default, R will choose the first element in the list (by alphabetical order) as the reference. We can reset the reference with the `relevel` function. 
+```{r, set-reference, message=FALSE}
+design <- relevel(design, "untreated_ctrl")
+# The first "level" is the new reference but the order of the list will not change.
+design
+```
+##### 4.3 Create table of sample information 
+The first column of the dataframe contains the name of samples *which must match* the order of samples in the matrix that contains the reads. The number of subsequent columns must match the number of factors in your design. 
+```{r, sample-info, message=FALSE}
+# In this experiment we only have one factor
+info <- data.frame(row.names = colnames(reads.matrix.filtered), design)
+info
+```
+##### 4.3 Create DEseq2 Data Object
+```{r, deseq-data-object, message=FALSE}
+# The ~ in front of design indicates that this is a Mean-Reference model
+data <- DESeqDataSetFromMatrix(countData = reads.matrix.filtered, 
+                               colData = info, 
+                               design= ~design)
+```
+##### 4.4 Run DESeq2
+```{r, run-deseq2, message=FALSE}
+dds <- DESeq(data)
+# Default estimates for DESeq2
+res_dds <- results(dds)
+head(res_dds)
+```
+##### 4.5 Shrink Log Fold Change (LFC)
+```{r, get-coef, message=FALSE}
+# Use the resultNames function to get all the coefficients with the reference that we set in step 4.2
+resultsNames(dds)
+```
+
+Note: as previously mentioned, the `apeglm` algorithm is not compatible with the use of `contrasts`, but `ashr` is. See [extended section on shrinkage estimators](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#extended-section-on-shrinkage-estimators). We did not explore whether the result is the same between `apeglm` vs `ashr`. 
+```{r, shrink-lfc, message=FALSE}
+resLFC <- lfcShrink(dds, coef="design_untreated_sg1_vs_untreated_ctrl", type="apeglm")
+resLFC
+```
+
+### Visualization 
+
+---
+
+#### LFC vs Baseline Average Expression
+The `baseMean` column in the `resLFC` output is the average mean across *all* samples, so we need to calculate the average expression of the reference samples separately. 
+```{r, calc-ref-avg, message=FALSE}
+resLFC$RefAvg <- rowMeans(reads.matrix.filtered[, annot.minus.outlier$Sample == "untreated_ctrl"]) 
+resLFC
+```
+
+```{r, mean-diff-plot, message=FALSE}
+DESEQ.meanDifferencePlot = function(deseq.result, title) {
+  return(
+    ggplot(deseq.result, aes(x=refAvg, y=log2FoldChange, color=log2FoldChange < 0 )) + 
+      geom_point() + 
+      theme_classic() + 
+      scale_y_continuous(limits = c(-8, 8)) + 
+      labs(title = title, x = "Average Expression", color = "Expression Change") + 
+      scale_color_manual(labels = c("Upregulated", "Downregulated"), values = c("pink", "lightblue")) + 
+      geom_text(aes(label=ifelse(hgnc_symbol=="TP53", hgnc_symbol,'')), color="black") + 
+      geom_text(aes(label=ifelse(hgnc_symbol=="MDM2", hgnc_symbol,'')), color="black") 
+  )
+}
+DESEQ.meanDifferencePlot(resLFC, "Untreated sg1 vs Untreated Control")
+```
+
+### Notes
+
+---
+
+In this example we analyzed the data set as a whole, allowing the linear model to "borrow" information across all the samples. Subsetting the data *will* change the results, and while the creators of Limma recommend analyzing the whole experiment together, this is not a hard and fast rule. See the [discussion on Bioconductor](https://support.bioconductor.org/p/p132527/) and the answer from the creator of DESeq2 on this topic. We have also included a [code sample](DESeq2/DESeq2-data-subset.md) using DESeq2 where the data was subsetted. 
+
+The code sample here only shows the result of one comparison - Untreated sg1 vs Untreated control - in order to clearly demonstrate DESeq2 usage. Code optimizations for analyzing the whole experiment is available as a R script. 
