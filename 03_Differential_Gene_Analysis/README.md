@@ -246,15 +246,17 @@ ggplot(toptable, aes(x=RefAvg, y=logFC, color=logFC < 0 )) +
 
 ------------------------------------------------------------------------
 
+The code sample here only shows the result of one comparison - Untreated
+sg1 vs Untreated control - for simplicity. Code optimization for
+analyzing the whole experiment is available as a [R
+script](Limma/means-model.R)
+
 In this example we analyzed the data set as a whole, allowing the linear
 model to “borrow” information across all the samples. Subsetting the
 data *will* change the results, and while the creators of Limma
 recommend analyzing the whole experiment together, this is not a hard
 and fast rule. See the [discussion on
 Bioconductor](https://support.bioconductor.org/p/p132527/) and the
-answer from the creator of DESeq2 on this topic. See DESeq code sample
-for an experiment where the data was subsetted.
-
-The code sample here only shows the result of one comparison - Untreated
-sg1 vs Untreated control - for simplicity. Code optimizations for
-analyzing the whole experiment is available as a R script.
+answer from the creator of DESeq2 on this topic. The DESeq folder
+contains example for how to carry out an analysis using a subset of the
+data.
