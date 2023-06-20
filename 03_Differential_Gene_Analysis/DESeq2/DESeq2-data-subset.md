@@ -54,7 +54,7 @@ Raw Count Matrix is a .csv that contains raw read counts from RSEM where
 each column is a sample and each row is a gene.
 
 ``` r
-base_path <- '/Users/fzheng/Google Drive/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/RNA_seq/terra/outputs/'
+base_path <- '/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/RNA_seq/terra/outputs/'
 rsem <-'/call-rsem/'
 rna_agg <-'/RNA_aggregate/call-rsem_aggregate_results/'
 all_samples <- c('Meljuso_RDA763_RDA988_RepA',  'Meljuso_RDA816_RDA811_RepC', 
@@ -114,7 +114,7 @@ head(reads_df)
 #### 2.2. You can also subset the data
 
 ``` r
-sampleid <- read_excel('/Users/fzheng/Library/CloudStorage/GoogleDrive-fzheng@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/Data/rna_seq/sampleID.xlsx')
+sampleid <- read_excel('/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/Data/rna_seq/sampleID.xlsx')
 sampleid$sample_id <- sub("Meljuso_", "", sampleid$sample_id)
 
 selected_col <- sampleid[ sampleid$Name %in%  c('VP64_VP64_with_guide', 'VP64_VP64_no_guide'),]$sample_id
@@ -170,10 +170,10 @@ DESeq2 uses design formula to indicate to which samples are control and
 treatment. For the purpose of this example, to properly set up design
 formula, there should be two columns.
 
--   SampleID: samples name
+- SampleID: samples name
 
--   Condition: indicate whether it is control or treatment aka the
-    condition of the samples.
+- Condition: indicate whether it is control or treatment aka the
+  condition of the samples.
 
 Note it is absolutely critical that the columns of the count matrix and
 the rows of the design formula (SampleID) are in the same order.
@@ -200,11 +200,11 @@ design.formula
 DESeq2 uses *DESeqDataSetFromMatrix* to store the read counts,
 relationship between samples, and statistical estimates.
 
--   countData: raw count from RSEM with all the conditions
+- countData: raw count from RSEM with all the conditions
 
--   colData: Design Formula from step 4
+- colData: Design Formula from step 4
 
--   design: column name for condition in Design Formula
+- design: column name for condition in Design Formula
 
 ``` r
 dds <- DESeqDataSetFromMatrix(countData=round(result), 
@@ -301,12 +301,12 @@ head(shrink_dds)
 ```
 
     ##                     baseMean log2FoldChange      lfcSE       pvalue
-    ## ENSG00000000003.14 575.50741     0.10641499 0.08395641 1.722666e-01
-    ## ENSG00000000419.12 834.13319    -0.05994613 0.07292168 3.848148e-01
-    ## ENSG00000000457.13 122.10117     0.28617204 0.18251809 3.540125e-02
-    ## ENSG00000000460.16 326.53253    -0.43377120 0.12339086 8.663723e-05
-    ## ENSG00000000938.12  19.63681     0.08190587 0.22208946 3.872861e-01
-    ## ENSG00000000971.15 121.78985     1.75490356 0.20142569 1.782543e-19
+    ## ENSG00000000003.14 575.50741     0.10638985 0.08395625 1.722666e-01
+    ## ENSG00000000419.12 834.13319    -0.05995286 0.07292179 3.848148e-01
+    ## ENSG00000000457.13 122.10117     0.28616917 0.18251775 3.540125e-02
+    ## ENSG00000000460.16 326.53253    -0.43384507 0.12339126 8.663723e-05
+    ## ENSG00000000938.12  19.63681     0.08184632 0.22206579 3.872861e-01
+    ## ENSG00000000971.15 121.78985     1.75501639 0.20142536 1.782543e-19
     ##                            padj
     ## ENSG00000000003.14 3.065964e-01
     ## ENSG00000000419.12 5.455110e-01
@@ -376,7 +376,7 @@ volcano_plot <-function(deseq_input, highlight_gene = "ENSG00000010610.9", gene_
 volcano_plot(as.data.frame(shrink_dds))
 ```
 
-![](DESeq2-Protocol_files/figure-gfm/volcano_plot-1.png)<!-- -->
+![](DESeq2-data-subset_files/figure-gfm/volcano_plot-1.png)<!-- -->
 
 ### 2 Baseline vs LFC plot
 
@@ -414,4 +414,4 @@ ggplot(together_comp %>% arrange(desc(sig)), aes(x=log2(ctl_mean), y=log2FoldCha
   ggeasy::easy_center_title()
 ```
 
-![](DESeq2-Protocol_files/figure-gfm/Baseline%20vs%20LFC%20plot-1.png)<!-- -->
+![](DESeq2-data-subset_files/figure-gfm/Baseline%20vs%20LFC%20plot-1.png)<!-- -->

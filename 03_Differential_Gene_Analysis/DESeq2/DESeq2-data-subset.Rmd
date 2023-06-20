@@ -51,7 +51,7 @@ Raw Count Matrix is a .csv that contains raw read counts from RSEM where each co
 
 
 ```{r, import readcount}
-base_path <- '/Users/fzheng/Google Drive/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/RNA_seq/terra/outputs/'
+base_path <- '/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/RNA_seq/terra/outputs/'
 rsem <-'/call-rsem/'
 rna_agg <-'/RNA_aggregate/call-rsem_aggregate_results/'
 all_samples <- c('Meljuso_RDA763_RDA988_RepA',	'Meljuso_RDA816_RDA811_RepC', 
@@ -82,7 +82,7 @@ head(reads_df)
 #### 2.2. You can also subset the data
 
 ```{r}
-sampleid <- read_excel('/Users/fzheng/Library/CloudStorage/GoogleDrive-fzheng@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/Data/rna_seq/sampleID.xlsx')
+sampleid <- read_excel('/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.org/Shared drives/GPP Cloud /R&D/People/Fengyi/Cas12a/Data/rna_seq/sampleID.xlsx')
 sampleid$sample_id <- sub("Meljuso_", "", sampleid$sample_id)
 
 selected_col <- sampleid[ sampleid$Name %in%  c('VP64_VP64_with_guide', 'VP64_VP64_no_guide'),]$sample_id

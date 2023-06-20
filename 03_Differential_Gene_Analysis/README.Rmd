@@ -32,10 +32,10 @@ reads_file_dir <- "/Users/fu/Library/CloudStorage/GoogleDrive-fu@broadinstitute.
 read_files <- list.files(path=reads_file_dir, full.names=TRUE)
 # Create a dataframe of reads from each file
 reads_list <- lapply(read_files, function(x) {
-r <- fread(x, select = c("gene_id", "expected_count"))
-file_name <- unlist(strsplit(x, "\\."))[2]
-# Change the expected_count column to the sample name
-setnames(r, c("gene_id", sub(".*TP53-A549-", "", file_name)))
+  r <- fread(x, select = c("gene_id", "expected_count"))
+  file_name <- unlist(strsplit(x, "\\."))[2]
+  # Change the expected_count column to the sample name
+  setnames(r, c("gene_id", sub(".*TP53-A549-", "", file_name)))
 })
 
 # Merge all the reads into one dataframe
