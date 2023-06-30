@@ -12,6 +12,7 @@ For quantification, we use [RNA-Seq by Expectation Maximization(RSEM)](https://b
 # Protocol
 ## Requirements
 * Access to [Terra](https://terra.bio/)
+* Access to the [gpp_rnd_rnaseq](https://console.cloud.google.com/storage/browser/gpp_rnd_rnaseq) project on Google Cloud Storage
 * Google Cloud CLI
 
 ### Install Google Cloud CLI with Homebrew on MacOS
@@ -21,6 +22,8 @@ For quantification, we use [RNA-Seq by Expectation Maximization(RSEM)](https://b
 	* `brew install --cask google-cloud-sdk`
 * Log into your Google Cloud account
 	* `gcloud auth login`
+* Check that you have access to the files in gpp_rnd_rnaseq
+	* `gcloud storage ls --project=gpp-rnaseq-analysis`
 
 ### Create a Terra sample file
 1. Make a *tab delimited* sample file with the headers : `entity:sample_id`, `fastq1`, `fastq2`. 
